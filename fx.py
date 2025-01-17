@@ -1,7 +1,6 @@
 import os
 import numpy as np
 from fx_api.interface import FXAPI, FrameInfo
-from fx_api.sprites.sprite import Sprite
 from fx_api.sprites.sprite_manager import SpriteManager
 from fx_api.utils.anchor_manager import AnchorManager
 from fx_api.utils.vector import Vector
@@ -20,15 +19,11 @@ class FX:
         self.fx_path = fx_path
         self.video_path = video_path
         self.sprite_manager = None
-        self.sprite_class = Sprite
         self.anchor_manager = AnchorManager(self)
         self.is_ready = False
         self.should_refresh_frame = False
         self.unique_id = self.fx_name + "::" + self.video_path
-        self.sprite_defaults = {
-            "sprite_class": Sprite, # override Sprite class to customize
-            "anchor_point": (0,0) 
-        }
+      
         self.setup()
         self.sprite_manager = SpriteManager(self)
 
@@ -50,7 +45,7 @@ class FX:
     def get_fx_panel(self) -> list:
         panel_items = []
         if self.requires_sprites:
-            sprite_types = ["Image", "Text"]
+            sprite_types = ["Video", "Image", "Text"]
             sprite_types += [f"Object {obj.id}" for obj in self.api.get_objects()]
             panel_items = [
                 {
@@ -63,6 +58,13 @@ class FX:
                 },
                 {
                     "type": "divider"
+                },
+                {
+                    "show_for": "all",
+                    "type": "dropdown",
+                    "label": "Blend Mode",
+                    "options": ["Normal", "Additive", "Subtractive", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Hard Light", "Soft Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"],
+                    "change_action": self.sprite_manager.set_sprite_blend_mode
                 },
                 {
                     "show_for": "all",
@@ -109,21 +111,54 @@ class FX:
                     "action": [self.sprite_manager.add_keyframe, self.sprite_manager.reset_current_keyframe]
                 },
                 {
-                    "show_for": "image,sprite",
+                    "show_for": "image,video",
+                    "type": "divider"
+                },
+                {
+                    "show_for": "cutout,image,video",
                     "type": "color_picker",
                     "label": "Recolor",
                     "action": self.sprite_manager.sprite_color_changed
                 },
                 {
-                    "show_for": "image",
-                    "type": "divider"
+                    "show_for": "video",
+                    "type": "checkbox",
+                    "label": "Key",
+                    "default": True,
+                    "button_label": "Use Chroma Key",
+                    "action": self.sprite_manager.use_chroma_key_changed
                 },
                 {
-                    "show_for": "image",
+                    "show_for": "video",
+                    "type": "color_picker",
+                    "label": "Chroma Key",
+                    "alpha": False,
+                    "action": self.sprite_manager.chroma_key_changed
+                },
+                {
+                    "show_for": "video",
+                    "type": "slider",
+                    "label": "Spill",
+                    "min": 0,
+                    "max": 100,
+                    "default": 50,
+                    "action": self.sprite_manager.chroma_key_spill_changed
+                },
+                {
+                    "show_for": "video",
+                    "type": "slider",
+                    "label": "Choke",
+                    "min": -100,
+                    "max": 100,
+                    "default": 10,
+                    "action": self.sprite_manager.chroma_key_choke_changed
+                },
+                {
+                    "show_for": "image,video",
                     "type": "button",
-                    "label": "Image",
-                    "button_label": "Change Image...",
-                    "action": self.sprite_manager.change_image
+                    "label": "Media",
+                    "button_label": "Change File...",
+                    "action": self.sprite_manager.change_sprite_path
                 },
                 {
                     "show_for": "text",

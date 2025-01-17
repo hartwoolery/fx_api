@@ -1,7 +1,7 @@
 from enum import IntEnum
 from fx_api.interface import ObjectInfo, FrameInfo
 import supervision as sv
-import fx_api.sprites.sprite as spr
+import fx_api.sprites.base_sprite as spr
 import cv2
 import numpy as np
 from fx_api.utils.vector import Vector

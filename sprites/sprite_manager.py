@@ -7,7 +7,11 @@ import platform
 
 from fx_api.utils.anchor_manager import AnchorManager, ANCHOR_ID
 from fx_api.interface import ObjectInfo, FrameInfo
-import fx_api.sprites.sprite as sprite_class
+from fx_api.sprites.types.text_sprite import TextSprite
+from fx_api.sprites.types.image_sprite import ImageSprite
+from fx_api.sprites.types.anchor_sprite import AnchorSprite
+from fx_api.sprites.types.video_sprite import VideoSprite
+from fx_api.sprites.types.segmentation_sprite import SegmentationSprite
 from fx_api.utils.vector import Vector
 from fx_api.utils.history_manager import HistoryManager, HistoryState, HistoryType
 from fx_api.sprites.transforms import KeyFrame
@@ -20,7 +24,6 @@ class SpriteManager:
         self.current_unique_id = 0
         self.current_frame_index = 0
         self.selected_sprite = None
-        self.sprite_defaults = fx.sprite_defaults
         self.current_button = None
         self.mouse_start_pos = (0,0)
         self.transformed_ids = {}
@@ -29,7 +32,7 @@ class SpriteManager:
         self.reparent_sprite = None
         self.dragging_sprite = False
         self.current_modifiers = {}
-        self.world_sprite = sprite_class.AnchorSprite(self, ObjectInfo(-1, (0,0,0)), -1)
+        self.world_sprite = AnchorSprite(self, ObjectInfo(-1, (0,0,0)), -1)
         self.world_sprite.name = "scene"
         self.starting_matrix = None
         self.starting_scale = Vector(1,1)
@@ -123,6 +126,11 @@ class SpriteManager:
         else:
             self.select_sprite(self.sprites[0])
 
+    def set_sprite_blend_mode(self, blend_mode: str):
+        if self.selected_sprite:
+            self.selected_sprite.blend_mode = blend_mode.lower()
+            self.fx.api.update_frame()
+
     def set_render_order(self, render_order:float):
         if self.selected_sprite:
             self.selected_sprite.set_render_order(render_order)
@@ -161,12 +169,15 @@ class SpriteManager:
                 self.fx.api.update_timeline()
             self.fx.api.update_frame()
 
-    def change_image(self):
+    def change_sprite_path(self):
         if self.selected_sprite:
-            path = self.fx.api.open_file_dialog("Open Image", "Image Files (*.png *.jpg *.jpeg);;All Files (*.*)")
+            if self.selected_sprite.type == "image":
+                path = self.fx.api.open_file_dialog("Open Image", "Image Files (*.png *.jpg *.jpeg);;All Files (*.*)")
+            elif self.selected_sprite.type == "video":
+                path = self.fx.api.open_file_dialog("Open Video", "Video Files (*.mp4);;All Files (*.*)")
             if path is None:
                 return
-            self.selected_sprite.set_image(path)
+            self.selected_sprite.change_sprite_path(path)
             self.selected_sprite.name = os.path.basename(path)
             self.fx.api.update_frame()
             self.fx.api.update_scene_tree()
@@ -198,16 +209,45 @@ class SpriteManager:
         if self.selected_sprite:
             self.selected_sprite.text_color_changed(color)
             self.fx.api.update_frame()
+            self.fx.api.update_inspector()
     
     def text_bg_color_changed(self, color: tuple[int,int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.text_bg_color_changed(color)
             self.fx.api.update_frame()
+            self.fx.api.update_inspector()
+
+    def use_chroma_key_changed(self, use_chroma_key: bool):
+        if self.selected_sprite:
+            self.selected_sprite.use_chroma_key = use_chroma_key
+            self.fx.api.update_frame()
+            self.fx.api.update_inspector()
+
+    def chroma_key_changed(self, color: tuple[int,int,int]):
+        if self.selected_sprite:
+            self.selected_sprite.chroma_key_changed(color)
+            self.fx.api.update_frame()
+            self.fx.api.update_inspector()
+
+    def chroma_key_spill_changed(self, spill: float, finished: bool):
+        if self.selected_sprite:
+            self.selected_sprite.chroma_key_spill = spill
+            self.selected_sprite.reset_spill_masks()
+            self.fx.api.update_frame()
+            self.fx.api.update_inspector()
+    
+    def chroma_key_choke_changed(self, choke: float, finished: bool):
+        if self.selected_sprite:
+            self.selected_sprite.chroma_key_choke = choke
+            self.selected_sprite.reset_choke_masks()
+            self.fx.api.update_frame()
+            self.fx.api.update_inspector()
 
     def sprite_color_changed(self, color: tuple[int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.recolor_changed(color)
             self.fx.api.update_frame()
+            self.fx.api.update_inspector()
 
     def add_keyframe(self):
         if self.selected_sprite:
@@ -632,9 +672,24 @@ class SpriteManager:
 
         type = type.lower()
         new_sprite = None
-        if type == "sprite":
+        if type == "cutout":
             if copy_sprite is not None:
                 type = "object " + str(copy_sprite.object_info.id)
+
+        if type == "video":
+            parent = self.world_sprite
+            if copy_sprite is not None:
+                parent = copy_sprite.parent
+                path = copy_sprite.image_path
+            else:
+                path = self.fx.api.open_file_dialog("Open Video", "Video Files (*.mp4);;All Files (*.*)")
+            
+            if path is None:
+                return
+            
+            video_sprite = VideoSprite(self, path, self.current_unique_id)
+            new_sprite = self.add_generic_sprite(video_sprite, parent=parent)
+            new_sprite.name = os.path.basename(path)
 
         if type == "image":
             parent = self.world_sprite
@@ -646,7 +701,7 @@ class SpriteManager:
             
             if path is None:
                 return
-            image_sprite = sprite_class.ImageSprite(self, path, self.current_unique_id)
+            image_sprite = ImageSprite(self, path, self.current_unique_id)
             new_sprite = self.add_generic_sprite(image_sprite, parent=parent)
             new_sprite.name = os.path.basename(path)
             
@@ -657,7 +712,7 @@ class SpriteManager:
             if copy_sprite is not None:
                 parent = copy_sprite.parent
                 font_options =  copy.deepcopy(copy_sprite.font_options)
-            text_sprite = sprite_class.TextSprite(self, 
+            text_sprite = TextSprite(self, 
                                                   font_options=font_options, 
                                                   unique_id=self.current_unique_id)
             new_sprite = self.add_generic_sprite(text_sprite, parent=parent)
@@ -711,9 +766,7 @@ class SpriteManager:
             self.fx.api.update_scene_tree()
 
     def add_segmentation_sprite(self, object:ObjectInfo, parent=None):
-        obj_class = self.sprite_defaults.get("sprite_class", sprite_class.Sprite)
-        sprite = obj_class(self, object, self.current_unique_id)
-        sprite.is_segmentation_sprite = True
+        sprite = SegmentationSprite(self, object, self.current_unique_id)
         
         return self.add_generic_sprite(sprite, parent)
     
@@ -721,23 +774,7 @@ class SpriteManager:
         self.sprites.append(sprite)
 
         sprite.custom_render_order = len(self.sprites)
-        if sprite.type != "sprite":  
-            num_frames = 30
-            end_frame = self.fx.api.get_total_frames() - 1
-            start_frame = 0           
-            end = 0
-            if self.current_frame_index < num_frames:
-                start = 0
-                end = num_frames
-            elif self.current_frame_index > end_frame - num_frames:
-                start = end_frame - num_frames
-                end = end_frame
-            else:
-                start = self.current_frame_index
-                end = self.current_frame_index + num_frames
-
-            sprite.start_keyframe.frame_index = start
-            sprite.end_keyframe.frame_index = end
+            
 
         sprite.set_parent(parent)
         self.current_unique_id += 1
@@ -752,7 +789,7 @@ class SpriteManager:
         return sprite
     
     def add_anchor_sprite(self, object:ObjectInfo):
-        anchor_sprite = sprite_class.AnchorSprite(self, object, self.current_unique_id)
+        anchor_sprite = AnchorSprite(self, object, self.current_unique_id)
         self.anchor_sprites.append(anchor_sprite)
         #self.current_unique_id += 1
         return anchor_sprite

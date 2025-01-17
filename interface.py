@@ -48,6 +48,12 @@ class FXAPI:
         """
         return Vector(720, 1280) 
     
+    def get_temp_directory(self, name:str) -> str:
+        """
+        Returns the temporary directory for the video.
+        """
+        return None
+    
     def get_pose(self, frame_info: FrameInfo) -> dict:
         """
         Returns the pose for the given frame.
