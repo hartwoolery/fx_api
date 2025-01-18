@@ -13,7 +13,7 @@ class BaseSprite(Transformable):
         super().__init__(sprite_manager)
         self.type = type
         self.name = self.type + " " + str(unique_id)
-        self.object_info = object_info if object_info is not None else ObjectInfo(-1, (0,0,0))
+        self.object_info = object_info if object_info is not None else ObjectInfo()
 
         self.blend_mode = "normal"
 
@@ -68,10 +68,12 @@ class BaseSprite(Transformable):
         self.transform_buttons = []
         for i in range(11):
             transform_type = "scale" 
-            if i == 1: transform_type = "rotation"
+            if i == 1 and self.type != "crop": transform_type = "rotation"
             elif i == 4 or i == 6: transform_type = "scale_y"
             elif i == 5 or i == 7: transform_type = "scale_x"
-            elif i == 8: transform_type = "anchor"
+            if self.type == "crop" and i > 7:
+                continue
+            if i == 8: transform_type = "anchor"
             elif i == 9: transform_type = "clone"
             elif i == 10: transform_type = "delete"
             self.transform_buttons.append(UIButton(self, transform_type=transform_type ))
@@ -132,6 +134,11 @@ class BaseSprite(Transformable):
     
     def update_bbox(self):
         if self.bbox is not None:
+
+            if self.type == "crop":
+                x1, y1, x2, y2 = map(int, self.bbox)
+                self.bbox_corners = [Vector(x1,y1), Vector(x2,y1), Vector(x2,y2), Vector(x1,y2)]
+                return
 
             half_size = self.true_size // 2
             x1 = -half_size.x
@@ -403,6 +410,8 @@ class BaseSprite(Transformable):
             # Draw filled circle at midpoint
             self.transform_buttons[i+4].draw((mid_x, mid_y), background)
 
+        if self.type == "crop":
+            return
 
         # Draw line from anchor point to parent anchor point
 

@@ -13,7 +13,7 @@ class FrameInfo:
         self.detections = None
 
 class ObjectInfo:
-    def __init__(self, id: int, color: tuple[int, int, int], start_frame: int=None, end_frame: int=None):
+    def __init__(self, id: int = -1, color: tuple[int, int, int] = (0,0,0), start_frame: int=None, end_frame: int=None):
         self.id = id
         self.color = color
         self.start_frame = start_frame
@@ -23,6 +23,11 @@ class FXAPI:
     
     def __init__(self):
         super().__init__()
+
+        self.should_refresh_frame = False
+        self.should_refresh_timeline = False
+        self.should_refresh_inspector = False
+        self.should_refresh_tree = False
         
     def get_total_objects(self) -> int:
         """
@@ -35,6 +40,13 @@ class FXAPI:
         Returns the total number of frames in the video.
         """
         return 0
+    
+    def get_frames_per_second(self) -> float:
+        """
+        Returns the frames per second of the video.
+        """
+        return 30.0
+
 
     def get_color_palette(self) -> list[tuple[int, int, int]]:
         """

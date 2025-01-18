@@ -258,10 +258,20 @@ class Transformable:
         return Vector(x_local, y_local)
     
 
-    def add_keyframe(self, frame_index:int=None):
-        existing_keyframe = self.keyframe_for_index(frame_index)
-        if not existing_keyframe:
-            self.keyframes.append(KeyFrame(frame_index, self.local_transform.copy()))
+    def get_or_add_keyframe(self, frame_index:int=None):
+        keyframe = self.keyframe_for_index(frame_index)
+        if not keyframe:
+            transform = self.local_transform.copy()
+            default_transform = KeyFrame.default_transform()
+            for key in default_transform.keys():
+                if key not in transform:
+                    transform[key] = default_transform[key]
+            
+            self.sprite_manager.has_new_keyframes = True
+            keyframe = KeyFrame(frame_index, transform)
+            self.keyframes.append(keyframe)
+        
+        return keyframe
             
     
     def set_local_transform(self, key:str, value:any, frame_index:int=None):
@@ -275,15 +285,11 @@ class Transformable:
         
         
         # Find existing keyframe at this index
-        existing_keyframe = self.keyframe_for_index(frame_index)
+        keyframe = self.get_or_add_keyframe(frame_index)
         
-        # Create new keyframe if none exists
-        if not existing_keyframe:
-            self.sprite_manager.has_new_keyframes = True
-            existing_keyframe = KeyFrame(frame_index)
-            self.keyframes.append(existing_keyframe)
+        
         # Set the transform value
-        existing_keyframe.transform[key] = value
+        keyframe.transform[key] = value
 
 
     def keyframe_for_index(self, frame_index:int):

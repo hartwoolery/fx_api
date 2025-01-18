@@ -21,7 +21,6 @@ class FX:
         self.sprite_manager = None
         self.anchor_manager = AnchorManager(self)
         self.is_ready = False
-        self.should_refresh_frame = False
         self.unique_id = self.fx_name + "::" + self.video_path
       
         self.setup()
@@ -119,6 +118,15 @@ class FX:
                     "type": "color_picker",
                     "label": "Recolor",
                     "action": self.sprite_manager.sprite_color_changed
+                },
+                {
+                    "show_for": "video",
+                    "type": "slider",
+                    "label": "Time Stretch",
+                    "min": -400,
+                    "max": 400,
+                    "default": 0,
+                    "action": self.sprite_manager.time_stretch_changed
                 },
                 {
                     "show_for": "video",
@@ -255,7 +263,7 @@ class FX:
         if self.requires_sprites:
             should_bubble = func()
             if not should_bubble:
-                self.should_refresh_frame = True
+                self.api.should_refresh_frame = True
         return should_bubble
     
     def on_mouse_down(self, coord: tuple[int, int], modifiers: dict) -> bool:

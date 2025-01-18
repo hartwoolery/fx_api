@@ -25,7 +25,7 @@ class TextSprite(BaseSprite):
     def get_sprite_image(self, frame_info:FrameInfo):
         if self.image is None:
             return None
-        rgba = self.image.copy()
+        rgba = self.image
         return rgba
     
     def render(self, frame_info:FrameInfo, transform:dict={}):
@@ -82,6 +82,7 @@ class TextSprite(BaseSprite):
         self.update_bbox()
     
     def text_changed(self, text:str):
+        
         self.font_options["text"] = text
         self.name = text.replace('\n', ' ')
         self.draw_text()

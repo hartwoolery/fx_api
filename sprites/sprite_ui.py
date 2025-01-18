@@ -36,8 +36,13 @@ class UIButton:
             self.radius = 10
         else:
             self.color = (255, 0, 255)
+            self.radius += 2
 
         self.radius += 2
+
+        if sprite.type == "crop":
+            self.color = (0, 255, 0)
+            self.thickness = 1
 
         
     def draw(self, new_location:Vector, background:np.ndarray):

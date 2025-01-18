@@ -139,6 +139,10 @@ class Vector(tuple):
         return Vector(value ** self[0], value ** self[1])
     
     def __eq__(self, other) -> bool:
+        if (other is None and self is not None) or (other is not None and self is None):
+            return False
+        if other is None and self is None:
+            return True
         if isinstance(other, (int, float)):
             return self[0] == other and self[1] == other
         return self[0] == other[0] and self[1] == other[1]

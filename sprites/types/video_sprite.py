@@ -18,6 +18,9 @@ class VideoSprite(BaseSprite):
         self.temp_folder = None
         self.frame_count = 0
         self.use_chroma_key = True
+        self.time_stretch = 0.0
+        self.default_time_stretch = 0.0
+        self.frames_per_second = 30.0
         self.chroma_key_color = (0,0,0)
         self.chroma_key_choke = 10  # -1.0 to 1.0, negative shrinks mask, positive expands
         self.chroma_key_spill = 50  # 0.0 to 1.0, higher values reduce color bleeding
@@ -39,7 +42,7 @@ class VideoSprite(BaseSprite):
         color_diff = np.abs(hsv - np.array(big_color, dtype=np.float32))
         # Normalize differences and combine channels with weights
         weights = np.array([2.0, 1.0, 1.0])  # More weight on hue
-        normalized_diff = np.sum(color_diff * weights, axis=2) / np.sum(weights)
+        normalized_diff = np.sum(color_diff * weights, axis=2) / (np.sum(weights) + 1e-10)
         
         # Convert to mask (0-255)
         mask = np.clip(255 - (normalized_diff * 255 / 10), 0, 255).astype(np.uint8)
@@ -84,7 +87,11 @@ class VideoSprite(BaseSprite):
         edge_mask = np.sqrt(sobelx**2 + sobely**2)
         
         # Normalize and expand edge area even more aggressively
-        edge_mask = edge_mask / np.max(edge_mask)
+        max_val = np.max(edge_mask)
+        if max_val <= 0:
+            max_val = 1
+
+        edge_mask = edge_mask / max_val
         kernel_size = int(self.chroma_key_spill / 2)  # Even less division for larger kernel
         kernel_size = max(7, min(51, kernel_size))  # Increased max kernel size further
         if kernel_size % 2 == 0:
@@ -113,8 +120,8 @@ class VideoSprite(BaseSprite):
         end_frame = self.end_keyframe.frame_index
         current_frame = frame_info.index
 
-        offset_frame = current_frame - start_frame
-      
+        offset_frame = int((current_frame - start_frame) * self.get_time_stretch())
+        
         # Ensure frame index stays within valid range using modulus
         if self.frame_count > 0:
             
@@ -189,7 +196,13 @@ class VideoSprite(BaseSprite):
         self.chroma_key_color = (int(bgr_color[2]), int(bgr_color[1]), int(bgr_color[0]))
         
 
-
+    def get_time_stretch(self):
+        ts = 1.0 + abs(self.time_stretch)*0.01
+        if self.time_stretch < 0:
+            ts = 1.0 / ts
+            
+        return self.default_time_stretch * ts
+        
     def change_sprite_path(self, path:str):
         self.video_path = path
         name = os.path.splitext(os.path.basename(path))[0]
@@ -219,13 +232,20 @@ class VideoSprite(BaseSprite):
             cv2.imwrite(frame_path, frame)
             frame_count += 1
 
+        self.frames_per_second = cap.get(cv2.CAP_PROP_FPS)
+        self.default_time_stretch = self.sprite_manager.fx.api.get_frames_per_second() / self.frames_per_second
+        
+        self.time_stretch = 0
+
         cap.release()
         self.frame_count = frame_count
-
         if self.frame_count > 0:
             self.start_keyframe.frame_index = self.sprite_manager.current_frame_index
             total_frames = self.sprite_manager.fx.api.get_total_frames()
-            max_end_frame = min(self.start_keyframe.frame_index + self.frame_count, total_frames - 1)
+
+            ts = self.get_time_stretch()
+            max_end_frame = min(self.start_keyframe.frame_index + int(self.frame_count*ts), total_frames - 1)
+            
             self.end_keyframe.frame_index = max_end_frame
 
             self.reset_choke_masks()
@@ -240,10 +260,11 @@ class VideoSprite(BaseSprite):
 
             world_size = self.sprite_manager.fx.api.get_resolution()
             self.bbox = (0,0, resolution.x, resolution.y)
-            
+           
             self.true_size = resolution
             self.update_bbox()
             self.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
+            
         else:
             self.enabled = False
 

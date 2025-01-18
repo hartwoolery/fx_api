@@ -12,6 +12,7 @@ from fx_api.sprites.types.image_sprite import ImageSprite
 from fx_api.sprites.types.anchor_sprite import AnchorSprite
 from fx_api.sprites.types.video_sprite import VideoSprite
 from fx_api.sprites.types.segmentation_sprite import SegmentationSprite
+from fx_api.sprites.types.crop_sprite import CropSprite
 from fx_api.utils.vector import Vector
 from fx_api.utils.history_manager import HistoryManager, HistoryState, HistoryType
 from fx_api.sprites.transforms import KeyFrame
@@ -23,7 +24,6 @@ class SpriteManager:
         self.history_manager = HistoryManager(self)
         self.current_unique_id = 0
         self.current_frame_index = 0
-        self.selected_sprite = None
         self.current_button = None
         self.mouse_start_pos = (0,0)
         self.transformed_ids = {}
@@ -32,7 +32,11 @@ class SpriteManager:
         self.reparent_sprite = None
         self.dragging_sprite = False
         self.current_modifiers = {}
-        self.world_sprite = AnchorSprite(self, ObjectInfo(-1, (0,0,0)), -1)
+
+        object_info = ObjectInfo(start_frame = 0, end_frame = self.fx.api.get_total_frames() - 1)
+        self.world_sprite = AnchorSprite(self, object_info, -1)
+        self.crop_sprite = CropSprite(self, object_info, -2)
+        self.selected_sprite = self.crop_sprite
         self.world_sprite.name = "scene"
         self.starting_matrix = None
         self.starting_scale = Vector(1,1)
@@ -70,8 +74,8 @@ class SpriteManager:
             self.select_sprite(None)
             if len(parent.children) > 0:
                 self.select_sprite(parent.children[len(parent.children)-1])
-            self.fx.api.update_timeline()
-            self.fx.api.update_scene_tree()
+            self.fx.api.should_refresh_timeline = True
+            self.fx.api.should_refresh_tree = True
 
     def set_sprite_enabled(self, enabled: bool):
         self.sprite_enabled = enabled
@@ -99,8 +103,8 @@ class SpriteManager:
                     "sprite": sprite,
                     "keyframe": keyframe
                 }))      
-            self.fx.api.update_frame()
-            self.fx.api.update_timeline()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
 
     def reset_all_keyframes(self):
         if self.fx.api.prompt_user("Are you sure you want to reset all keyframes? This will delete all keyframes for all sprites and cannot be undone."):
@@ -108,12 +112,13 @@ class SpriteManager:
                 sprite.keyframes = [sprite.start_keyframe, sprite.end_keyframe]
             
             self.history_manager.clear_history()
-            self.fx.api.update_frame()
-            self.fx.api.update_timeline()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
 
     def select_sprite(self, sprite):
-        self.selected_sprite = sprite
-        self.fx.api.update_inspector()
+        self.selected_sprite = sprite if sprite is not None else self.crop_sprite
+
+        self.fx.api.should_refresh_inspector = True
 
     def select_next_sprite(self, backwards:bool=False):
         if self.selected_sprite:
@@ -129,18 +134,18 @@ class SpriteManager:
     def set_sprite_blend_mode(self, blend_mode: str):
         if self.selected_sprite:
             self.selected_sprite.blend_mode = blend_mode.lower()
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     def set_render_order(self, render_order:float):
         if self.selected_sprite:
             self.selected_sprite.set_render_order(render_order)
-            self.fx.api.update_frame()
-            self.fx.api.update_timeline()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
 
     def set_sprite_easing(self, easing: str):
         if self.selected_sprite:
             self.selected_sprite.easing = easing
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     def set_sprite_opacity(self, opacity: int, finished:bool=False):
         if self.selected_sprite:
@@ -166,8 +171,8 @@ class SpriteManager:
                         "frame_index": self.current_frame_index
                     }))
 
-                self.fx.api.update_timeline()
-            self.fx.api.update_frame()
+                self.fx.api.should_refresh_timeline = True
+            self.fx.api.should_refresh_frame = True
 
     def change_sprite_path(self):
         if self.selected_sprite:
@@ -179,81 +184,90 @@ class SpriteManager:
                 return
             self.selected_sprite.change_sprite_path(path)
             self.selected_sprite.name = os.path.basename(path)
-            self.fx.api.update_frame()
-            self.fx.api.update_scene_tree()
-            self.fx.api.update_timeline()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_tree = True
+            self.fx.api.should_refresh_timeline = True
 
     def font_changed(self, font_path: str):
         if self.selected_sprite:
             self.selected_sprite.font_changed(font_path)
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     def font_size_changed(self, font_size: int):
         if self.selected_sprite:
             self.selected_sprite.font_size_changed(font_size)
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     def text_changed(self, text: str):
+        
         if self.selected_sprite and self.selected_sprite.type == "text":
-            self.selected_sprite.text_changed(text)
-            self.fx.api.update_frame()
-            self.fx.api.update_scene_tree()
-            self.fx.api.update_timeline()
+            prev_text = self.selected_sprite.font_options.get("text", None)
+            if prev_text != text:
+                self.selected_sprite.text_changed(text)
+                self.fx.api.should_refresh_frame = True
+                self.fx.api.should_refresh_tree = True
+                self.fx.api.should_refresh_timeline = True
     
     def text_alignment_changed(self, alignment: str):
         if self.selected_sprite:
             self.selected_sprite.text_alignment_changed(alignment)
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     def text_color_changed(self, color: tuple[int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.text_color_changed(color)
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
     
     def text_bg_color_changed(self, color: tuple[int,int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.text_bg_color_changed(color)
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
+
+    def time_stretch_changed(self, time_stretch: float, finished: bool):
+        if self.selected_sprite:
+            self.selected_sprite.time_stretch = time_stretch
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
 
     def use_chroma_key_changed(self, use_chroma_key: bool):
         if self.selected_sprite:
             self.selected_sprite.use_chroma_key = use_chroma_key
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
 
     def chroma_key_changed(self, color: tuple[int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.chroma_key_changed(color)
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
 
     def chroma_key_spill_changed(self, spill: float, finished: bool):
         if self.selected_sprite:
             self.selected_sprite.chroma_key_spill = spill
             self.selected_sprite.reset_spill_masks()
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
     
     def chroma_key_choke_changed(self, choke: float, finished: bool):
         if self.selected_sprite:
             self.selected_sprite.chroma_key_choke = choke
             self.selected_sprite.reset_choke_masks()
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
 
     def sprite_color_changed(self, color: tuple[int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.recolor_changed(color)
-            self.fx.api.update_frame()
-            self.fx.api.update_inspector()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_inspector = True
 
     def add_keyframe(self):
         if self.selected_sprite:
-            self.selected_sprite.add_keyframe(self.current_frame_index)
-            self.fx.api.update_frame()
-            self.fx.api.update_timeline()
+            self.selected_sprite.get_or_add_keyframe(self.current_frame_index)
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
 
     def follow_scale_changed(self, follow_scale: bool):
         if self.selected_sprite and follow_scale:
@@ -271,7 +285,7 @@ class SpriteManager:
     def on_transform_estimates_ready(self, transforms:list):
         if self.selected_sprite:
             self.selected_sprite.transform_estimates = transforms
-            self.fx.api.update_frame()
+            self.fx.api.should_refresh_frame = True
 
     ############################################################
     # Mouse and Keyboard Actions
@@ -294,7 +308,7 @@ class SpriteManager:
                 self.history_manager.undo()
                 self.fx.api.update_hint_label("Undo " + str(self.history_manager.current_state).lower() + " - hold " + ctrl_key +"+Shift+Z to Redo")
              #redraw timeline
-            self.fx.api.update_timeline()
+            self.fx.api.should_refresh_timeline = True
             should_bubble = False
         elif modifiers.get("delete", False) == True:
             self.delete_sprite()
@@ -401,8 +415,14 @@ class SpriteManager:
         self.reparent_sprite = None
         dragging = modifiers.get("dragging", False)
         if dragging:
+            
             if self.current_button and self.selected_sprite:
-                if self.current_button.type == "anchor":
+                # special case for crop sprite
+                if self.current_button and "scale" in self.current_button.type and self.selected_sprite.type == "crop":
+                    self.selected_sprite.modify_crop(self.current_button, coord)
+                
+
+                elif self.current_button.type == "anchor":
                     spr.temp_anchor_point = spr.global_to_local(coord)
 
                         
@@ -515,7 +535,8 @@ class SpriteManager:
                 
             elif self.current_button is None and self.selected_sprite:
                 # we are dragging the sprite
-                #current_translation = spr.get_position(local=True) 
+                if self.selected_sprite.type == "crop":
+                    return True
 
                 closest_sprite = self.get_closest_sprite(coord, exlude_selected_sprite=True, include_anchor_sprites=True)
                 if closest_sprite:
@@ -571,7 +592,7 @@ class SpriteManager:
         if self.dragging_sprite:
             if modifiers.get("shift", False) == True and self.reparent_sprite is not None:
                 spr.set_parent(self.reparent_sprite)
-                self.fx.api.update_scene_tree()
+                self.fx.api.should_refresh_tree = True
             should_bubble = False
             
            
@@ -630,7 +651,7 @@ class SpriteManager:
                     "keyframe": keyframe_spr.keyframe_for_index(self.current_frame_index)
                 }))
                 self.has_new_keyframes = False
-                self.fx.api.update_timeline()
+                self.fx.api.should_refresh_timeline = True
             elif not KeyFrame.transforms_similar(self.starting_transform, spr.local_transform):
               
                 # Create keyframe if transform changed
@@ -664,8 +685,8 @@ class SpriteManager:
 
 
         self.history_manager.clear_history()
-        self.fx.api.update_scene_tree()
-        self.fx.api.update_timeline()
+        self.fx.api.should_refresh_tree = True
+        self.fx.api.should_refresh_timeline = True
         
 
     def add_sprite_of_type(self, type:str, copy_sprite=None):
@@ -761,9 +782,9 @@ class SpriteManager:
                                         frame_index=new_sprite.start_keyframe.frame_index)
             new_sprite.parent.update_render_order()
             self.select_sprite(new_sprite)
-            self.fx.api.update_frame()
-            self.fx.api.update_timeline()
-            self.fx.api.update_scene_tree()
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
+            self.fx.api.should_refresh_tree = True
 
     def add_segmentation_sprite(self, object:ObjectInfo, parent=None):
         sprite = SegmentationSprite(self, object, self.current_unique_id)
@@ -860,10 +881,17 @@ class SpriteManager:
             # render selected sprite last
             if self.selected_sprite:
                 self.selected_sprite.render_ui(frame_info)
+
+            
+            
+
         else:
             pass
             #print("post_render")
 
+        self.crop_sprite.render(frame_info)
+        if render_ui:
+            self.crop_sprite.render_ui(frame_info)
     
     def load_state(self):
         pass
