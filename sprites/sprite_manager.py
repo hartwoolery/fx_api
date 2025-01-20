@@ -22,7 +22,7 @@ class SpriteManager:
         self.fx = fx
         self.anchor_manager = fx.anchor_manager
         self.history_manager = HistoryManager(self)
-        self.current_unique_id = 0
+        self.current_unique_id = 1
         self.current_frame_index = 0
         self.current_button = None
         self.mouse_start_pos = (0,0)
@@ -55,23 +55,23 @@ class SpriteManager:
         if self.selected_sprite:
             new_sprite = self.add_sprite_of_type(self.selected_sprite.type, self.selected_sprite)
             
-    def delete_sprite(self):
-        if self.selected_sprite:
-            for child in self.selected_sprite.children:
-                child.set_parent(self.selected_sprite.parent)
-            self.sprites.remove(self.selected_sprite)
-            parent = self.selected_sprite.parent
-            parent.children.remove(self.selected_sprite)
+    def delete_sprite(self, delete_sprite=None):
+        sprite = delete_sprite or self.selected_sprite
+        if sprite:
+            for child in sprite.children:
+                child.set_parent(sprite.parent)
+            self.sprites.remove(sprite)
+            parent = sprite.parent
+            parent.children.remove(sprite)
 
-            deleted_sprite = self.selected_sprite
+            deleted_sprite = sprite
             self.history_manager.add_history(HistoryState(state={
                 "type": HistoryType.DELETE_SPRITE,
                 "sprite": deleted_sprite
             }))
 
-
-            
-            self.select_sprite(None)
+            if delete_sprite is None:
+                self.select_sprite(None)
             if len(parent.children) > 0:
                 self.select_sprite(parent.children[len(parent.children)-1])
             self.fx.api.should_refresh_timeline = True
@@ -146,6 +146,10 @@ class SpriteManager:
         if self.selected_sprite:
             self.selected_sprite.easing = easing
             self.fx.api.should_refresh_frame = True
+
+    def set_sprite_smoothing(self, smoothing: int, finished:bool=False):
+        if self.selected_sprite:
+            self.selected_sprite.set_smoothing(smoothing)
 
     def set_sprite_opacity(self, opacity: int, finished:bool=False):
         if self.selected_sprite:
@@ -591,7 +595,7 @@ class SpriteManager:
 
         if self.dragging_sprite:
             if modifiers.get("shift", False) == True and self.reparent_sprite is not None:
-                spr.set_parent(self.reparent_sprite)
+                spr.set_parent(self.reparent_sprite, change_position=True)
                 self.fx.api.should_refresh_tree = True
             should_bubble = False
             
@@ -676,16 +680,16 @@ class SpriteManager:
         self.fx.api.should_refresh_timeline = True
         
 
-    def add_sprite_of_type(self, type:str, copy_sprite=None):
+    def add_sprite_of_type(self, type:str, copy_sprite=None, parent=None):
 
         type = type.lower()
+        parent = parent or self.world_sprite
         new_sprite = None
         if type == "cutout":
             if copy_sprite is not None:
                 type = "object " + str(copy_sprite.object_info.id)
 
         if type == "video":
-            parent = self.world_sprite
             if copy_sprite is not None:
                 parent = copy_sprite.parent
                 path = copy_sprite.image_path
@@ -693,14 +697,13 @@ class SpriteManager:
                 path = self.fx.api.open_file_dialog("Open Video", "Video Files (*.mp4);;All Files (*.*)")
             
             if path is None:
-                return
+                return None
             
             video_sprite = VideoSprite(self, path, self.current_unique_id)
             new_sprite = self.add_generic_sprite(video_sprite, parent=parent)
             new_sprite.name = os.path.basename(path)
 
         if type == "image":
-            parent = self.world_sprite
             if copy_sprite is not None:
                 parent = copy_sprite.parent
                 path = copy_sprite.image_path
@@ -708,13 +711,12 @@ class SpriteManager:
                 path = self.fx.api.open_file_dialog("Open Image", "Image Files (*.png *.jpg *.jpeg);;All Files (*.*)")
             
             if path is None:
-                return
+                return None
             image_sprite = ImageSprite(self, path, self.current_unique_id)
             new_sprite = self.add_generic_sprite(image_sprite, parent=parent)
             new_sprite.name = os.path.basename(path)
             
         elif type == "text":
-            parent = self.world_sprite
             font_options = {}
             text = "Hello Banana"
             if copy_sprite is not None:
@@ -741,13 +743,10 @@ class SpriteManager:
                 
                 if existing_anchor is None:
                     print("Error adding sprite of type: ", type, "existing anchor found")
-                    return
+                    return None
                 
 
                 new_sprite = self.add_segmentation_sprite(object_info, parent=existing_anchor)
-                
-                self.select_sprite(new_sprite)
-                new_sprite.set_position(Vector(20,20) * (len(existing_anchor.children)-1), local=True, frame_index=0)
                 existing_anchor.update_render_order()
                 
 
@@ -758,20 +757,23 @@ class SpriteManager:
         if new_sprite is not None:
             self.added_new_sprite = True
             
-            
-
             if copy_sprite is not None:
                 new_sprite.keyframes = copy.deepcopy(copy_sprite.keyframes)
                 new_sprite.start_keyframe = copy.deepcopy(copy_sprite.start_keyframe)
                 new_sprite.end_keyframe = copy.deepcopy(copy_sprite.end_keyframe)
-                new_sprite.set_position(copy_sprite.get_position() + Vector(20,20), 
-                                        local=True, 
-                                        frame_index=new_sprite.start_keyframe.frame_index)
+                if parent == self.world_sprite:
+                    world_size = self.fx.api.get_resolution()
+                    new_sprite.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
+                # new_sprite.set_position(copy_sprite.get_position() + Vector(20,20), 
+                #                         local=True, 
+                #                         frame_index=new_sprite.start_keyframe.frame_index)
             new_sprite.parent.update_render_order()
             self.select_sprite(new_sprite)
             self.fx.api.should_refresh_frame = True
             self.fx.api.should_refresh_timeline = True
             self.fx.api.should_refresh_tree = True
+
+            return new_sprite
 
     def add_segmentation_sprite(self, object:ObjectInfo, parent=None):
         sprite = SegmentationSprite(self, object, self.current_unique_id)
@@ -784,7 +786,7 @@ class SpriteManager:
         sprite.custom_render_order = len(self.sprites)
             
 
-        sprite.set_parent(parent)
+        sprite.set_parent(parent, change_position=False)
         self.current_unique_id += 1
         added_sprite = sprite
         self.history_manager.add_history(HistoryState(state={
@@ -823,7 +825,7 @@ class SpriteManager:
         for sprite in all_sprites:
             sprite.update_bbox()
 
-        
+        self.sprites.sort(key=lambda s: s.render_order)
         # update anchor positions
         #self.anchor_manager.update_anchors(pose_anchors, all_sprites)
 
@@ -833,9 +835,11 @@ class SpriteManager:
     def render_sprites(self, frame_info: FrameInfo, sprites=None):
         if sprites is None:
             sprites = self.sprites
+        else:
+            sprites.sort(key=lambda s: s.render_order)
 
-        sprites.sort(key=lambda s: s.render_order)
-        for idx, sprite in enumerate(sprites):
+        
+        for sprite in sprites:
             sprite.render(frame_info)
 
    

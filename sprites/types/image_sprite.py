@@ -44,12 +44,10 @@ class ImageSprite(BaseSprite):
             new_scale = 512 / resolution.x
             resolution *= new_scale
 
-        world_size = self.sprite_manager.fx.api.get_resolution()
         self.bbox = (0,0, resolution.x, resolution.y)
         
         self.true_size = resolution
         self.update_bbox()
-        self.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
 
     def render(self, frame_info:FrameInfo, transform:dict={}):
         super().render(frame_info, transform)

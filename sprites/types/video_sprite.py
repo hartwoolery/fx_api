@@ -120,12 +120,15 @@ class VideoSprite(BaseSprite):
         end_frame = self.end_keyframe.frame_index
         current_frame = frame_info.index
 
-        offset_frame = int((current_frame - start_frame) * self.get_time_stretch())
+        total_expected_frames = int(self.frame_count * self.get_time_stretch())
+
+        percent = (current_frame - start_frame) / total_expected_frames
+        offset_frame = int(percent * (self.frame_count - 1))
         
         # Ensure frame index stays within valid range using modulus
         if self.frame_count > 0:
             
-            offset_frame = offset_frame % self.frame_count
+            offset_frame = offset_frame % (self.frame_count - 1)
             rgb = self.get_frame_image(offset_frame).copy()
             opacity = self.get_opacity()
 
@@ -244,8 +247,8 @@ class VideoSprite(BaseSprite):
             total_frames = self.sprite_manager.fx.api.get_total_frames()
 
             ts = self.get_time_stretch()
-            max_end_frame = min(self.start_keyframe.frame_index + int(self.frame_count*ts), total_frames - 1)
-            print(self.frame_count, ts, max_end_frame)
+            max_end_frame = min(self.start_keyframe.frame_index + int((self.frame_count-1)*ts), total_frames - 1)
+  
             self.end_keyframe.frame_index = max_end_frame
 
             self.reset_choke_masks()
@@ -258,12 +261,10 @@ class VideoSprite(BaseSprite):
                 new_scale = 512 / resolution.x
             resolution *= new_scale
 
-            world_size = self.sprite_manager.fx.api.get_resolution()
             self.bbox = (0,0, resolution.x, resolution.y)
            
             self.true_size = resolution
             self.update_bbox()
-            self.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
             
         else:
             self.enabled = False

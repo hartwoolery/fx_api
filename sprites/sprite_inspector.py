@@ -60,6 +60,16 @@ class SpriteInspector:
                 },
                 {
                     "show_for": "all",
+                    "type": "slider",
+                    "label": "Smoothing",
+                    "min": 0,
+                    "max": 100,
+                    "default": 0,
+                    "action": self.sprite_manager.set_sprite_smoothing,
+                    "get_value": lambda: self.sprite_manager.selected_sprite.smoothing
+                },
+                {
+                    "show_for": "all",
                     "type": "dropdown",
                     "label": "Easing",
                     "options": Easing.get_easing_functions(),

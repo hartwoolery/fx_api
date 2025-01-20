@@ -8,6 +8,7 @@ from fx_api.utils.image import ImageUtils
 from fx_api.sprites.transforms import Transformable
 from PIL import Image, ImageDraw, ImageFont
 from fx_api.sprites.sprite_ui import UIButton
+from fx_api.utils.noise_filter import OneEuroFilter2D
 
 class BaseSprite(Transformable):
     def __init__(self, sprite_manager, object_info: ObjectInfo, unique_id:int, type:str="base"):
@@ -16,6 +17,9 @@ class BaseSprite(Transformable):
         self.name = self.type + " " + str(unique_id)
         self.object_info = object_info if object_info is not None else ObjectInfo()
         self.meta_data = {}
+
+        self.position_filter = OneEuroFilter2D(freq=60, mincutoff=1.0, beta=0.1, dcutoff=1.0)
+        self.smoothing = 0
 
         self.blend_mode = "normal"
 
@@ -85,6 +89,10 @@ class BaseSprite(Transformable):
     
     def set_meta(self, key:str, value:any):
         self.meta_data[key] = value
+
+    def set_smoothing(self, smoothing:int):
+        self.smoothing = smoothing
+        self.position_filter.setParameters( freq=60, mincutoff=10/(smoothing*10+10), beta=1/(smoothing*10+10), dcutoff=1.0)
         
     def get_enabled(self):
         return self._enabled and self.start_keyframe.frame_index <= self.sprite_manager.current_frame_index <= self.end_keyframe.frame_index
@@ -149,12 +157,14 @@ class BaseSprite(Transformable):
                 return
 
             half_size = self.true_size // 2
-            x1 = -half_size.x
-            y1 = -half_size.y
-            x2 = half_size.x
-            y2 = half_size.y
+            
 
-            center = self.local_to_global(Vector(0,0))
+            center_local = Vector(0,0)
+            center = self.local_to_global(center_local)
+
+
+            x1, y1 = center_local - half_size
+            x2, y2 = center_local + half_size
 
             corners = [Vector(x1,y1), Vector(x2,y1), Vector(x2,y2), Vector(x1,y2)]
             corners = [self.local_to_global(corner) for corner in corners]
@@ -228,7 +238,7 @@ class BaseSprite(Transformable):
     
     ''' 
     def recolor_changed(self, color:tuple[int,int,int]):
-        self.recolor = (color[2], color[1], color[0], 255)
+        self.recolor = (color[0], color[1], color[2], 255)
 
     def recolor_sprite(self, frame_crop:np.ndarray):
         if self.recolor is None:
@@ -350,6 +360,13 @@ class BaseSprite(Transformable):
             final_position = Vector(x1, y1)
             rgba_large = rgba
 
+
+
+        if self.smoothing > 0:
+            if self.sprite_manager.current_frame_index == 0:
+                self.position_filter.reset()
+            
+            final_position = self.position_filter(final_position, frame_info.time)
 
         ImageUtils.blend(frame_info.render_buffer, rgba_large, final_position, centered=False, blend_mode=self.blend_mode)
 

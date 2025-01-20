@@ -78,7 +78,13 @@ class Transformable:
         for idx, child in enumerate(self.children):
             child.update_render_order(idx/100.0)
 
-    def set_parent(self, parent):   
+    #for debugging
+    def print_stack(self):
+        import traceback
+        print("\n".join(traceback.format_stack()))
+
+
+    def set_parent(self, parent, change_position:bool=True):   
         if parent in parent.children or parent == self:
             return
             
@@ -108,9 +114,10 @@ class Transformable:
             if self not in parent.children:
                 parent.children.append(self)
             
-            # Convert global position to new parent's local space
-            new_local_pos = parent.global_to_local(global_pos)
-            self.set_position(new_local_pos, local=True, frame_index=self.start_keyframe.frame_index)
+            if change_position: 
+                # Convert global position to new parent's local space
+                new_local_pos = parent.global_to_local(global_pos)
+                self.set_position(new_local_pos, local=True, frame_index=self.start_keyframe.frame_index)
 
         self.parent.update_render_order()
         
@@ -119,6 +126,7 @@ class Transformable:
 
     
     def set_position(self, position:Vector, local:bool=False, frame_index:int=None):
+        
         if not local and self.parent is not None:
             # First convert current position back to global space
             current_global = self.get_position(local=False)
@@ -173,9 +181,19 @@ class Transformable:
 
     # normalized anchor point is between -1 and 1
     def set_anchor_point_normalized(self, new_anchor:Vector):
-        half_size = self.true_size / 2
-        new_anchor = new_anchor * half_size
+        new_anchor = self.normalized_point_to_local(new_anchor)
         self.set_anchor_point(new_anchor)
+
+    # convert from -1 to 1 to local space in pixels
+    def normalized_point_to_local(self, pt:Vector):
+        half_size = self.true_size / 2
+        pt = pt * half_size
+        return pt
+    
+    # convert from -1 to 1 to global space in pixels
+    def normalized_point_to_global(self, pt:Vector):
+        local = self.normalized_point_to_local(pt)
+        return self.local_to_global(local)
 
     def set_anchor_point(self, new_anchor: Vector):
         vec_zero = Vector(0,0)

@@ -18,9 +18,6 @@ class TextSprite(BaseSprite):
         self.font_options = font_options
         # Import PIL for text rendering
         self.draw_text()
-
-        world_size = self.sprite_manager.fx.api.get_resolution()
-        self.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
     
     def get_sprite_image(self, frame_info:FrameInfo):
         if self.image is None:
@@ -60,13 +57,13 @@ class TextSprite(BaseSprite):
         padding = 20
         canvas_width = text_width + padding * 2
         canvas_height = text_height + padding * 2
-        b,g,r,a = text_bg_color
+        r,g,b,a = text_bg_color
         image = Image.new("RGBA", (canvas_width, canvas_height), (r, g, b, a))
         draw = ImageDraw.Draw(image)
 
         text_x = padding - text_bbox[0]  # Adjust for any negative bbox offset
         text_y = padding - text_bbox[1]  # Adjust for any negative bbox offset
-        b,g,r,a = text_color
+        r,g,b,a = text_color
         draw.text((text_x, text_y), text, fill=(r, g, b, a), font=font, align=alignment)
         self.image = np.array(image)
 

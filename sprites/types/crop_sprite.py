@@ -16,7 +16,6 @@ class CropSprite(BaseSprite):
         self.bbox = [0,0, world_size.x, world_size.y]
         self.true_size = world_size
         self.update_bbox()
-        #self.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
 
     def modify_crop(self, button, coord:Vector):
         if button.type == "scale_x":
