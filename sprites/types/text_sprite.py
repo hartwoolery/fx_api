@@ -99,7 +99,7 @@ class TextSprite(BaseSprite):
         self.font_options["font_size"] = font_size
         self.draw_text()
 
-    def text_color_changed(self, text_color:tuple[int, int, int]):
+    def text_color_changed(self, text_color:tuple[int, int, int, int]):
         self.font_options["text_color"] = text_color
         self.draw_text()
 

@@ -245,7 +245,7 @@ class VideoSprite(BaseSprite):
 
             ts = self.get_time_stretch()
             max_end_frame = min(self.start_keyframe.frame_index + int(self.frame_count*ts), total_frames - 1)
-            
+            print(self.frame_count, ts, max_end_frame)
             self.end_keyframe.frame_index = max_end_frame
 
             self.reset_choke_masks()

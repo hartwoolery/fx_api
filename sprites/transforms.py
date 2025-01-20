@@ -128,7 +128,7 @@ class Transformable:
             # Convert desired global position to parent's local space
             parent_local_pos = self.parent.global_to_local(position)
             
-         
+        
             # Calculate how much the anchor point shifts the sprite in rotated space
             rotation = -self.get_rotation(local=True)
             
@@ -139,13 +139,13 @@ class Transformable:
             
             # Adjust the position to compensate for the anchor point shift
             parent_local_pos += anchor_offset
-            
+         
             position = parent_local_pos
         
         if position != self.get_position(local=True):
             self.set_local_transform("translation", position, frame_index)
 
-    def set_rotation(self, angle:float, local:bool=False):
+    def set_rotation(self, angle:float, local:bool=False, frame_index:int=None):
         if not local and self.parent is not None:
             current_global = self.get_rotation(local=False)
             if current_global == angle:
@@ -154,9 +154,9 @@ class Transformable:
             angle -= parent_angle
 
 
-        self.set_local_transform("rotation", angle)
+        self.set_local_transform("rotation", angle, frame_index)
 
-    def set_scale(self, scale:Vector, local:bool=False):
+    def set_scale(self, scale:Vector, local:bool=False, frame_index:int=None):
         
         if not local and self.parent is not None:
             current_global = self.get_scale(local=False)
@@ -166,10 +166,30 @@ class Transformable:
             scale /= parent_scale
 
         
-        self.set_local_transform("scale", scale)
+        self.set_local_transform("scale", scale, frame_index)
 
-    def set_opacity(self, opacity:float):
-        self.set_local_transform("opacity", opacity)
+    def set_opacity(self, opacity:float, frame_index:int=None):
+        self.set_local_transform("opacity", opacity, frame_index)
+
+    # normalized anchor point is between -1 and 1
+    def set_anchor_point_normalized(self, new_anchor:Vector):
+        half_size = self.true_size / 2
+        new_anchor = new_anchor * half_size
+        self.set_anchor_point(new_anchor)
+
+    def set_anchor_point(self, new_anchor: Vector):
+        vec_zero = Vector(0,0)
+        old_pos = self.local_to_global(vec_zero)
+        
+        self.anchor_point = new_anchor
+        self.temp_anchor_point = self.anchor_point
+
+        self.update_transform()
+
+        delta = self.local_to_global(vec_zero) - old_pos
+ 
+        self.set_position(self.get_position() - delta)
+
 
     def get_position(self, local:bool=False)->Vector:
         return self.get_translation(local)
@@ -268,6 +288,8 @@ class Transformable:
                     transform[key] = default_transform[key]
             
             self.sprite_manager.has_new_keyframes = True
+            self.sprite_manager.fx.api.should_refresh_timeline = True
+        
             keyframe = KeyFrame(frame_index, transform)
             self.keyframes.append(keyframe)
         
@@ -290,6 +312,8 @@ class Transformable:
         
         # Set the transform value
         keyframe.transform[key] = value
+
+        self.sprite_manager.fx.api.should_refresh_frame = True
 
 
     def keyframe_for_index(self, frame_index:int):

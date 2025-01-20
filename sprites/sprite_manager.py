@@ -121,7 +121,7 @@ class SpriteManager:
         self.fx.api.should_refresh_inspector = True
 
     def select_next_sprite(self, backwards:bool=False):
-        if self.selected_sprite:
+        if self.selected_sprite is not self.crop_sprite:
             current_index = self.sprites.index(self.selected_sprite)
             if backwards:
                 new_index = (current_index - 1) % len(self.sprites)
@@ -213,7 +213,7 @@ class SpriteManager:
             self.selected_sprite.text_alignment_changed(alignment)
             self.fx.api.should_refresh_frame = True
 
-    def text_color_changed(self, color: tuple[int,int,int]):
+    def text_color_changed(self, color: tuple[int,int,int,int]):
         if self.selected_sprite:
             self.selected_sprite.text_color_changed(color)
             self.fx.api.should_refresh_frame = True
@@ -610,24 +610,12 @@ class SpriteManager:
                     spr.set_scale(scale, local=True)
                     spr.set_rotation((spr.get_rotation(local=True) + 180) % 360, local=True)
                     
-
+            
             if self.current_button.type == "anchor":
-                # Store the original global position
-                original_global_pos = spr.get_position()
-                original_anchor = spr.local_to_global(spr.anchor_point)
-                
+
                 # Update anchor point
                 new_anchor = spr.global_to_local(coord)
-              
-                spr.anchor_point = new_anchor
-                spr.update_transform()
-                # Calculate and apply position offset to maintain global position
-         
-                #spr.set_position(original_global_pos)
-                #spr.update_transform()
-                delta = spr.local_to_global(spr.anchor_point) - coord
-                
-                spr.set_position(spr.get_position() - delta)
+                spr.set_anchor_point(new_anchor)
                 
             elif self.current_button.type == "clone":
                 self.clone_sprite()
@@ -651,7 +639,6 @@ class SpriteManager:
                     "keyframe": keyframe_spr.keyframe_for_index(self.current_frame_index)
                 }))
                 self.has_new_keyframes = False
-                self.fx.api.should_refresh_timeline = True
             elif not KeyFrame.transforms_similar(self.starting_transform, spr.local_transform):
               
                 # Create keyframe if transform changed

@@ -36,13 +36,14 @@ class UIButton:
             self.radius = 10
         else:
             self.color = (255, 0, 255)
-            self.radius += 2
+            
 
         self.radius += 2
 
         if sprite.type == "crop":
             self.color = (0, 255, 0)
             self.thickness = 1
+            self.radius += 2
 
         
     def draw(self, new_location:Vector, background:np.ndarray):
@@ -52,6 +53,17 @@ class UIButton:
 
         circle_color = self.color#self.sprite.object_info.color if self.type == "rotation" and hasattr(self.sprite, "object_info") else self.color
         
+        if self.sprite.type == "crop":
+            r = self.radius * radius_factor
+            # Draw a filled diamond shape
+            points = np.array([
+                [center[0], center[1] - r],  # Top
+                [center[0] + r, center[1]],  # Right
+                [center[0], center[1] + r],  # Bottom 
+                [center[0] - r, center[1]]   # Left
+            ], np.int32)
+            cv2.fillPoly(background, [points], circle_color, cv2.LINE_AA)
+            return
 
         if not (self.type == "clone"):
             cv2.circle(background, center, self.radius * radius_factor, circle_color, self.thickness, cv2.LINE_AA)

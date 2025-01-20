@@ -41,6 +41,12 @@ class FXAPI:
         """
         return 0
     
+    def get_current_frame(self) -> FrameInfo:
+        """
+        Returns the current frame in the video.
+        """
+        return None
+    
     def get_frames_per_second(self) -> float:
         """
         Returns the frames per second of the video.

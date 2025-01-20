@@ -8,12 +8,14 @@ from fx_api.utils.image import ImageUtils
 from fx_api.sprites.transforms import Transformable
 from PIL import Image, ImageDraw, ImageFont
 from fx_api.sprites.sprite_ui import UIButton
+
 class BaseSprite(Transformable):
     def __init__(self, sprite_manager, object_info: ObjectInfo, unique_id:int, type:str="base"):
         super().__init__(sprite_manager)
         self.type = type
         self.name = self.type + " " + str(unique_id)
         self.object_info = object_info if object_info is not None else ObjectInfo()
+        self.meta_data = {}
 
         self.blend_mode = "normal"
 
@@ -77,6 +79,12 @@ class BaseSprite(Transformable):
             elif i == 9: transform_type = "clone"
             elif i == 10: transform_type = "delete"
             self.transform_buttons.append(UIButton(self, transform_type=transform_type ))
+        
+    def get_meta(self, key:str, default:any=None):
+        return self.meta_data.get(key, default)
+    
+    def set_meta(self, key:str, value:any):
+        self.meta_data[key] = value
         
     def get_enabled(self):
         return self._enabled and self.start_keyframe.frame_index <= self.sprite_manager.current_frame_index <= self.end_keyframe.frame_index
@@ -220,7 +228,7 @@ class BaseSprite(Transformable):
     
     ''' 
     def recolor_changed(self, color:tuple[int,int,int]):
-        self.recolor = (color[2], color[1], color[0], color[3])
+        self.recolor = (color[2], color[1], color[0], 255)
 
     def recolor_sprite(self, frame_crop:np.ndarray):
         if self.recolor is None:
@@ -236,7 +244,7 @@ class BaseSprite(Transformable):
         #s.fill(self.recolor[3] *)  # Set saturation to maximum value
         s = s.astype(np.uint8)
         # Multiply value channel by recolor value (normalized to 0-1)
-        v = v * (recolor_hsv[0][0][2] / 255.0)
+        #v = v * (recolor_hsv[0][0][2] / 255.0)
         v = v.astype(np.uint8)
         # Merge channels back and convert to BGR
         frame_crop = cv2.cvtColor(cv2.merge([h, s, v]), cv2.COLOR_HSV2BGR)
