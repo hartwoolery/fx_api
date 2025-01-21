@@ -37,7 +37,6 @@ class ImageUtils:
         dst_end_x = min(background.shape[1], paste_x + foreground.shape[1])
 
 
-        
         background_height, background_width = background.shape[:2]
 
         def blend_bg(background, foreground, alpha, blend_mode):
@@ -108,12 +107,29 @@ class ImageUtils:
 
             # Extract alpha channel and normalize to 0-1 range
             alpha = foreground[src_start_y:src_end_y, src_start_x:src_end_x, 3:4] / 255.0
-            blended = blend_bg(
-                background[dst_start_y:dst_end_y, dst_start_x:dst_end_x],
-                foreground[src_start_y:src_end_y, src_start_x:src_end_x, :3],
-                alpha,
-                blend_mode
-            )
-            background[dst_start_y:dst_end_y, dst_start_x:dst_end_x] = np.clip(blended, 0, 255)
+            # Check if the background has an alpha channel
+            if background.shape[2] == 4:
+                # Separate the RGB and alpha channels
+                bg_rgb = background[dst_start_y:dst_end_y, dst_start_x:dst_end_x, :3]
+                bg_alpha = background[dst_start_y:dst_end_y, dst_start_x:dst_end_x, 3:4] / 255.0
+
+                # Blend the RGB channels
+                blended_rgb = blend_bg(bg_rgb, foreground[src_start_y:src_end_y, src_start_x:src_end_x, :3], alpha, blend_mode)
+
+                # Blend the alpha channels
+                blended_alpha = np.clip(bg_alpha + alpha * (1 - bg_alpha), 0, 1) * 255.0
+
+                # Combine the blended RGB and alpha channels
+                background[dst_start_y:dst_end_y, dst_start_x:dst_end_x, :3] = np.clip(blended_rgb, 0, 255)
+                background[dst_start_y:dst_end_y, dst_start_x:dst_end_x, 3:4] = blended_alpha
+            else:
+                # Blend the RGB channels only
+                blended = blend_bg(
+                    background[dst_start_y:dst_end_y, dst_start_x:dst_end_x],
+                    foreground[src_start_y:src_end_y, src_start_x:src_end_x, :3],
+                    alpha,
+                    blend_mode
+                )
+                background[dst_start_y:dst_end_y, dst_start_x:dst_end_x] = np.clip(blended, 0, 255)
 
             

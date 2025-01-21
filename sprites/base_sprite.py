@@ -368,7 +368,9 @@ class BaseSprite(Transformable):
             
             final_position = self.position_filter(final_position, frame_info.time)
 
-        ImageUtils.blend(frame_info.render_buffer, rgba_large, final_position, centered=False, blend_mode=self.blend_mode)
+        buffer = frame_info.override_buffer if frame_info.override_buffer is not None else frame_info.render_buffer
+
+        ImageUtils.blend(buffer, rgba_large, final_position, centered=False, blend_mode=self.blend_mode)
 
     def render(self, frame_info:FrameInfo, transform:dict={}):
         self.transform_override = transform

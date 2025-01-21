@@ -6,6 +6,7 @@ class FrameInfo:
     def __init__(self, frame: np.ndarray, index: int, total_frames: int, time: float = 0,  delta_time: float = 0):
         self.frame = frame
         self.render_buffer = None
+        self.override_buffer = None
         self.index = index
         self.time = time
         self.total_frames = total_frames
