@@ -35,7 +35,8 @@ class SpriteInspector:
                     "type": "dropdown",
                     "label": "Blend Mode",
                     "options": ["Normal", "Additive", "Subtractive", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Hard Light", "Soft Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"],
-                    "change_action": self.sprite_manager.set_sprite_blend_mode,
+                    "default": "Normal",
+                    "action": self.sprite_manager.set_sprite_blend_mode,
                     "get_value": lambda: self.sprite_manager.selected_sprite.blend_mode
                 },
                 {
@@ -73,7 +74,7 @@ class SpriteInspector:
                     "type": "dropdown",
                     "label": "Easing",
                     "options": Easing.get_easing_functions(),
-                    "change_action": self.sprite_manager.set_sprite_easing,
+                    "action": self.sprite_manager.set_sprite_easing,
                     "get_value": lambda: self.sprite_manager.selected_sprite.easing
                 },
                 # {
@@ -177,7 +178,7 @@ class SpriteInspector:
                     "type": "dropdown",
                     "label": "Alignment",
                     "options": ["Left", "Center", "Right"],
-                    "change_action": self.sprite_manager.text_alignment_changed,
+                    "action": self.sprite_manager.text_alignment_changed,
                     "get_value": lambda: self.sprite_manager.selected_sprite.font_options.get("alignment", "Left")
                 },
                 {

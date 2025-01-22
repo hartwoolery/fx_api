@@ -17,6 +17,7 @@ class ImageUtils:
 
     @staticmethod
     def blend(background:np.ndarray, foreground:np.ndarray, position:Vector, centered=False, blend_mode:str="normal"):
+        blend_mode = blend_mode.lower()
         position = position.round()
         if centered:
             paste_x = position[0] - foreground.shape[1] // 2
@@ -96,6 +97,9 @@ class ImageUtils:
                     bg_hsv[...,2] = alpha[...,0] * fg_hsv[...,2] + (1 - alpha[...,0]) * bg_hsv[...,2]
                 
                 result = cv2.cvtColor(bg_hsv, cv2.COLOR_HSV2RGB)
+            else: #default to normal
+                print("warning: blend mode not found, defaulting to normal", blend_mode)
+                result = (1 - alpha) * bg + alpha * fg
             
             # Convert back to 0-255 range
             return result * 255.0

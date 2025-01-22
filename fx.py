@@ -20,6 +20,7 @@ class FX:
         self.fx_path = fx_path
         self.video_path = video_path
         self.sprite_manager = None
+        self.meta_data = {}
         self.anchor_manager = AnchorManager(self)
         self.is_ready = False
         self.unique_id = self.fx_name + "::" + self.video_path
@@ -53,6 +54,13 @@ class FX:
     
     def get_custom_inspector(self):
         return []
+    
+    def set_meta(self, key:str, value:any):
+        self.meta_data[key] = value
+        self.api.should_refresh_frame = True
+        
+    def get_meta(self, key:str, default:any=None):
+        return self.meta_data.get(key, default)
 
     def get_resource(self, path:str):
         return os.path.join(self.fx_path, path)
@@ -72,16 +80,9 @@ class FX:
             detections = self.api.get_masks(frame_info.index)
             self.sprite_manager.update(frame_info, detections, pose_anchors)
 
+    
+
     def prepare_render_frame(self, frame_info: FrameInfo, render_ui:bool=False):
-        # prepare background
-        if self.requires_inpainting:
-            frame_info.render_buffer = self.api.get_inpainting(frame_info)
-        else:
-            frame_info.render_buffer = frame_info.frame.copy()
-
-
-        
-            
 
         self.update_sprite_positions(frame_info)
         self.render_background(frame_info)
@@ -96,7 +97,11 @@ class FX:
         self.api.should_refresh_frame = True
 
     def render_background(self, frame_info: FrameInfo):
-        self.sprite_manager.render_anchors(frame_info)
+        if self.requires_inpainting:
+            frame_info.render_buffer = self.api.get_inpainting(frame_info)
+        else:
+            frame_info.render_buffer = frame_info.frame.copy()
+        #self.sprite_manager.render_anchors(frame_info)
 
     def render_frame(self, frame_info: FrameInfo):
         self.sprite_manager.render_sprites(frame_info)

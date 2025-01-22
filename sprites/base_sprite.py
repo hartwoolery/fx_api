@@ -89,6 +89,7 @@ class BaseSprite(Transformable):
     
     def set_meta(self, key:str, value:any):
         self.meta_data[key] = value
+        self.sprite_manager.fx.api.should_refresh_frame = True
 
     def set_smoothing(self, smoothing:int):
         self.smoothing = smoothing

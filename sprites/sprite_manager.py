@@ -672,8 +672,8 @@ class SpriteManager:
             anchor_sprite = self.add_anchor_sprite(object)
             sprite = self.add_segmentation_sprite(object, parent=anchor_sprite)
             
-            
-
+        if len(self.sprites) > 0:   
+            self.select_sprite(self.sprites[0])
 
         self.history_manager.clear_history()
         self.fx.api.should_refresh_tree = True
