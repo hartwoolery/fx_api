@@ -85,6 +85,18 @@ class FXAPI:
         """
         return None
     
+    def set_fragment_shader(self, shader_src:str):
+        """
+        Sets the fragment shader for the given frame.
+        """
+        pass
+
+    def render_shader(self,  uniforms:dict) -> np.ndarray:
+        """
+        Renders the shader for the given frame.
+        """
+        pass
+    
     def get_objects(self) -> list[ObjectInfo]:
         """
         Returns the list of objects in the video.

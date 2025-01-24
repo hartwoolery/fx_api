@@ -17,6 +17,7 @@ class BaseSprite(Transformable):
         self.name = self.type + " " + str(unique_id)
         self.object_info = object_info if object_info is not None else ObjectInfo()
         self.meta_data = {}
+        self.default_meta_data = {}
 
         self.position_filter = OneEuroFilter2D(freq=60, mincutoff=1.0, beta=0.1, dcutoff=1.0)
         self.smoothing = 0
@@ -85,7 +86,7 @@ class BaseSprite(Transformable):
             self.transform_buttons.append(UIButton(self, transform_type=transform_type ))
         
     def get_meta(self, key:str, default:any=None):
-        return self.meta_data.get(key, default)
+        return self.meta_data.get(key, default or self.sprite_manager.fx.default_meta_data.get(key, None))
     
     def set_meta(self, key:str, value:any):
         self.meta_data[key] = value
@@ -121,6 +122,8 @@ class BaseSprite(Transformable):
         return self.sprite_manager.current_button is not None and self.sprite_manager.current_button.type == type
 
 
+    def get_mask_image(self):
+        return cv2.cvtColor(self.mask.copy().astype(np.uint8) * 255, cv2.COLOR_GRAY2BGR)
 
 
     def get_mask(self, detections:sv.Detections):

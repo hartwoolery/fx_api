@@ -21,6 +21,7 @@ class FX:
         self.video_path = video_path
         self.sprite_manager = None
         self.meta_data = {}
+        self.default_meta_data = {}
         self.anchor_manager = AnchorManager(self)
         self.is_ready = False
         self.unique_id = self.fx_name + "::" + self.video_path
@@ -82,7 +83,7 @@ class FX:
 
     
 
-    def prepare_render_frame(self, frame_info: FrameInfo, render_ui:bool=False):
+    def process_frame(self, frame_info: FrameInfo, render_ui:bool=False):
 
         self.update_sprite_positions(frame_info)
         self.render_background(frame_info)

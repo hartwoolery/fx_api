@@ -16,7 +16,7 @@ class ImageUtils:
             cv2.line(background, dash_start.round(), dash_end.round(), color, thickness, cv2.LINE_AA)
 
     @staticmethod
-    def blend(background:np.ndarray, foreground:np.ndarray, position:Vector, centered=False, blend_mode:str="normal"):
+    def blend(background:np.ndarray, foreground:np.ndarray, position:Vector=Vector(0,0), centered=False, blend_mode:str="normal"):
         blend_mode = blend_mode.lower()
         position = position.round()
         if centered:
