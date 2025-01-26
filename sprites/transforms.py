@@ -12,13 +12,17 @@ class KeyFrame:
         self.transform = transform.copy() if transform is not None else None
         self.is_bookend = is_bookend
 
+    def copy(self):
+        return copy.deepcopy(self)
+
     @staticmethod
     def default_transform():
         return {
             "scale": Vector(1.0, 1.0),
             "translation": Vector(0,0),
             "rotation": 0,
-            "opacity": 1.0
+            "opacity": 1.0,
+            "spins": 0
         }
     @staticmethod
     def transforms_similar(transform1, transform2):
@@ -161,8 +165,18 @@ class Transformable:
             parent_angle = self.parent.get_rotation(local=False)
             angle -= parent_angle
 
+        
 
+        
         self.set_local_transform("rotation", angle, frame_index)
+
+    def set_spins(self, spins:float, local:bool=False, frame_index:int=None):
+        if not local and self.parent is not None:
+            parent_spins = self.parent.get_spins(local=True)
+            spins += parent_spins
+        
+        self.set_local_transform("spins", spins, frame_index)
+    
 
     def set_scale(self, scale:Vector, local:bool=False, frame_index:int=None):
         
@@ -217,22 +231,30 @@ class Transformable:
     def get_rotation(self, local:bool=False)->float:
         transform = self.local_transform if local or not self.parent else self.global_transform
         rot = self.transform_override.get("rotation", transform.get("rotation", 0)) 
-        add_rot = 0
-        if self.follow_rotation:
-            idx = self.sprite_manager.current_frame_index
-            if idx < len(self.transform_estimates):
-                add_rot, _ = self.transform_estimates[idx]
-            else:
-                print("no transform estimates", idx)
+        add_rot = self.get_spins(local) * 360
+        # if self.follow_rotation:
+        #     idx = self.sprite_manager.current_frame_index
+        #     if idx < len(self.transform_estimates):
+        #         add_rot, _ = self.transform_estimates[idx]
+        #     else:
+        #         print("no transform estimates", idx)
+        
         return rot - add_rot
+    
+    def get_spins(self, local:bool=False)->float:
+        transform = self.local_transform
+        
+        spins = self.transform_override.get("spins", transform.get("spins", 0))
+        return spins
+    
     def get_scale(self, local:bool=False)->Vector:
         transform = self.local_transform if local or not self.parent else self.global_transform
         scale_val = Vector(self.transform_override.get("scale", transform.get("scale", Vector(1.0, 1.0))))
         mul_scale = Vector(1,1)
-        if self.follow_scale:
-            idx = self.sprite_manager.current_frame_index   
-            if idx < len(self.transform_estimates):
-                _, mul_scale = self.transform_estimates[idx]
+        # if self.follow_scale:
+        #     idx = self.sprite_manager.current_frame_index   
+        #     if idx < len(self.transform_estimates):
+        #         _, mul_scale = self.transform_estimates[idx]
         return scale_val * mul_scale
     def get_opacity(self, local:bool=False)->float:
         opacity_mod = 1.0
@@ -355,10 +377,16 @@ class Transformable:
         # Find surrounding keyframes for each transform property
 
         default_transform = KeyFrame.default_transform()
-        interpolated_transform = copy.deepcopy(default_transform)
         keys = default_transform.keys()
+        meta_keys = self.sprite_manager.fx.default_meta_data.keys()
+        for key in meta_keys:
+            default_transform[key] = self.sprite_manager.fx.default_meta_data.get(key, None)
+
+        interpolated_transform = copy.deepcopy(default_transform)
+        
+        combined_keys = list(keys) + list(meta_keys)
         if len(sorted_keyframes) > 0:
-            for key in keys:
+            for key in combined_keys:
                 prev_keyframe = None
                 next_keyframe = None
                 
@@ -376,6 +404,12 @@ class Transformable:
                 if not prev_keyframe:
                     prev_keyframe = KeyFrame(0)
                     prev_keyframe.transform[key] = next_keyframe.transform[key] if next_keyframe else default_transform[key]
+
+
+                # we reset the spins to 0 at every keyframe
+                if key == "spins":
+                    prev_keyframe = prev_keyframe.copy()
+                    prev_keyframe.transform[key] = 0
               
 
                 # Use same transform as previous keyframe at final frame if no next keyframe 
@@ -399,11 +433,16 @@ class Transformable:
                         start + (end - start) * t_eased
                         for start, end in zip(start_val, end_val)
                     )
-                else:
+                elif isinstance(start_val, (float, int)):
                     # Interpolate single values (rotation, opacity etc)
                     interpolated_transform[key] = start_val + (end_val - start_val) * t_eased
+                    # Interpolate single values (rotation, opacity etc)
+                    interpolated_transform[key] = start_val + (end_val - start_val) * t_eased
+                else:
+                    interpolated_transform[key] = start_val
 
         self.local_transform.update(interpolated_transform) 
+        
 
         
 

@@ -16,8 +16,8 @@ class BaseSprite(Transformable):
         self.type = type
         self.name = self.type + " " + str(unique_id)
         self.object_info = object_info if object_info is not None else ObjectInfo()
-        self.meta_data = {}
-        self.default_meta_data = {}
+        #self.meta_data = {}
+        #self.default_meta_data = {}
 
         self.position_filter = OneEuroFilter2D(freq=60, mincutoff=1.0, beta=0.1, dcutoff=1.0)
         self.smoothing = 0
@@ -70,8 +70,6 @@ class BaseSprite(Transformable):
         self.true_size = Vector(0,0) # the orignal size of the sprite in pixels
         self.interactable = True
         
-        self.recolor = None
-
         self.transform_buttons = []
         for i in range(11):
             transform_type = "scale" 
@@ -86,10 +84,19 @@ class BaseSprite(Transformable):
             self.transform_buttons.append(UIButton(self, transform_type=transform_type ))
         
     def get_meta(self, key:str, default:any=None):
-        return self.meta_data.get(key, default or self.sprite_manager.fx.default_meta_data.get(key, None))
+        key = "fx." + key
+        #val = self.meta_data.get(key, default or )
+        default_val = default or self.sprite_manager.fx.default_meta_data.get(key, None)
+        val = self.transform_override.get(key, self.local_transform.get(key, default_val)) 
+        return val
     
-    def set_meta(self, key:str, value:any):
-        self.meta_data[key] = value
+    def set_meta(self, key:str, value:any, should_add_keyframe:bool=True, frame_index:int=None):
+        key = "fx." + key
+        #self.meta_data[key] = value
+        self.set_local_transform(key, value, frame_index)
+        if should_add_keyframe:
+            
+            self.sprite_manager.check_for_keyframe_changes()
         self.sprite_manager.fx.api.should_refresh_frame = True
 
     def set_smoothing(self, smoothing:int):
@@ -241,18 +248,18 @@ class BaseSprite(Transformable):
                 self.rotation_estimate = -angle
     
     ''' 
-    def recolor_changed(self, color:tuple[int,int,int]):
-        self.recolor = (color[0], color[1], color[2], 255)
+    
 
     def recolor_sprite(self, frame_crop:np.ndarray):
-        if self.recolor is None:
+        recolor = self.get_meta("recolor", None)
+        if recolor is None:
             return frame_crop
          # Convert frame crop to HSV for recoloring
         frame_crop_hsv = cv2.cvtColor(frame_crop, cv2.COLOR_BGR2HSV)
         # Extract hue from recolor and apply it
         h, s, v = cv2.split(frame_crop_hsv)
         # Convert BGR recolor to HSV and extract hue
-        recolor_hsv = cv2.cvtColor(np.uint8([[self.recolor]]), cv2.COLOR_BGR2HSV)
+        recolor_hsv = cv2.cvtColor(np.uint8([[recolor]]), cv2.COLOR_BGR2HSV)
         h.fill(recolor_hsv[0][0][0])  # Fill with extracted hue value
         # Increase saturation by 50%
         #s.fill(self.recolor[3] *)  # Set saturation to maximum value

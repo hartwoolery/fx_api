@@ -34,7 +34,7 @@ class SpriteInspector:
                     "show_for": "all",
                     "type": "dropdown",
                     "label": "Blend Mode",
-                    "options": ["Normal", "Additive", "Subtractive", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Hard Light", "Soft Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"],
+                    "options": ["Normal", "Add", "Subtract", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Hard Light", "Soft Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"],
                     "default": "Normal",
                     "action": self.sprite_manager.set_sprite_blend_mode,
                     "get_value": lambda: self.sprite_manager.selected_sprite.blend_mode
@@ -58,6 +58,17 @@ class SpriteInspector:
                     "default": 100,
                     "action": self.sprite_manager.set_sprite_opacity,
                     "get_value": lambda: int(self.sprite_manager.selected_sprite.get_opacity() * 100)
+                },
+                {
+                    "show_for": "all",
+                    "type": "slider",
+                    "label": "Spins",
+                    "min": -10,
+                    "max": 10,
+                    "default": 0,
+                    "suffix": "",
+                    "action": self.sprite_manager.set_spins,
+                    "get_value": lambda: self.sprite_manager.get_spins()
                 },
                 {
                     "show_for": "all",
@@ -104,8 +115,7 @@ class SpriteInspector:
                     "show_for": "cutout,image,video",
                     "type": "color_picker",
                     "label": "Recolor",
-                    "action": self.sprite_manager.sprite_color_changed,
-                    "get_value": lambda: self.sprite_manager.selected_sprite.recolor
+                    "sprite_meta": "recolor",
                 },
                 {
                     "show_for": "video",

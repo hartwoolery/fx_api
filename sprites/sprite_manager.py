@@ -142,6 +142,19 @@ class SpriteManager:
             self.fx.api.should_refresh_frame = True
             self.fx.api.should_refresh_timeline = True
 
+    def get_spins(self):
+        if self.selected_sprite:
+            kf = self.selected_sprite.keyframe_for_index(self.current_frame_index)
+            if kf:
+                return kf.transform.get("spins", 0)
+        return 0
+
+    def set_spins(self, spins:float, finished:bool=False):
+        if self.selected_sprite and finished:
+            self.selected_sprite.set_spins(spins)
+            self.fx.api.should_refresh_frame = True
+            self.fx.api.should_refresh_timeline = True
+
     def set_sprite_easing(self, easing: str):
         if self.selected_sprite:
             self.selected_sprite.easing = easing
@@ -261,11 +274,6 @@ class SpriteManager:
             self.fx.api.should_refresh_frame = True
             self.fx.api.should_refresh_inspector = True
 
-    def sprite_color_changed(self, color: tuple[int,int,int]):
-        if self.selected_sprite:
-            self.selected_sprite.recolor_changed(color)
-            self.fx.api.should_refresh_frame = True
-            self.fx.api.should_refresh_inspector = True
 
     def add_keyframe(self):
         if self.selected_sprite:
@@ -313,6 +321,7 @@ class SpriteManager:
                 self.fx.api.update_hint_label("Undo " + str(self.history_manager.current_state).lower() + " - hold " + ctrl_key +"+Shift+Z to Redo")
              #redraw timeline
             self.fx.api.should_refresh_timeline = True
+            self.fx.api.should_refresh_inspector = True
             should_bubble = False
         elif modifiers.get("delete", False) == True:
             self.delete_sprite()
@@ -630,6 +639,20 @@ class SpriteManager:
             should_bubble = False
         
          #check to see if we added a keyframe, but skip for new sprites
+        self.check_for_keyframe_changes()
+
+       
+        # #redraw if deselected
+        # if spr is not None:
+        #     if not spr.is_point_in_sprite(coord):
+        #         self.select_sprite(None)
+        #     should_bubble = False
+
+        return should_bubble
+
+
+    def check_for_keyframe_changes(self):
+        spr = self.selected_sprite
         if spr is not None:
             keyframe_spr = spr
             # Compare current transform with starting transform to detect changes
@@ -653,15 +676,6 @@ class SpriteManager:
                     "end_transform": copy.deepcopy(spr.local_transform),
                     "frame_index": self.current_frame_index
                 }))
-
-        #redraw if deselected
-        elif self.selected_sprite is not None:
-            if not self.selected_sprite.is_point_in_sprite(coord):
-                self.select_sprite(None)
-            should_bubble = False
-
-        return should_bubble
-
     
     def add_sprites_for_objects(self, objects: list[ObjectInfo]):
         for object in objects:
@@ -763,7 +777,7 @@ class SpriteManager:
                 new_sprite.end_keyframe = copy.deepcopy(copy_sprite.end_keyframe)
                 if parent == self.world_sprite:
                     world_size = self.fx.api.get_resolution()
-                    new_sprite.set_position(world_size//2, frame_index=self.start_keyframe.frame_index)
+                    new_sprite.set_position(world_size//2, frame_index=new_sprite.start_keyframe.frame_index)
                 # new_sprite.set_position(copy_sprite.get_position() + Vector(20,20), 
                 #                         local=True, 
                 #                         frame_index=new_sprite.start_keyframe.frame_index)

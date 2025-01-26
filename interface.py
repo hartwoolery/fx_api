@@ -85,6 +85,12 @@ class FXAPI:
         """
         return None
     
+    def get_mask_image(self, frame_index: int, obj_id: int) -> np.ndarray:
+        """
+        Returns the mask image for the given frame.
+        """
+        return None
+    
     def set_fragment_shader(self, shader_src:str):
         """
         Sets the fragment shader for the given frame.

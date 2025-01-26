@@ -51,17 +51,21 @@ class FX:
         custom_items = self.get_custom_inspector()
         if len(custom_items) > 0:
             custom_items.append({"type": "divider"})
-        return custom_items + self.sprite_inspector.get_inspector()
+        default_items = self.sprite_inspector.get_inspector()
+        
+        first_item = default_items[:1]
+        second_item = default_items[1:]
+        return first_item + custom_items + second_item
     
     def get_custom_inspector(self):
         return []
     
     def set_meta(self, key:str, value:any):
-        self.meta_data[key] = value
+        self.meta_data["fx." + key] = value
         self.api.should_refresh_frame = True
         
     def get_meta(self, key:str, default:any=None):
-        return self.meta_data.get(key, default)
+        return self.meta_data.get("fx." + key, default)
 
     def get_resource(self, path:str):
         return os.path.join(self.fx_path, path)

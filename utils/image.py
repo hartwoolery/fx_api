@@ -47,9 +47,9 @@ class ImageUtils:
             
             if blend_mode == "normal":
                 result = (1 - alpha) * bg + alpha * fg
-            elif blend_mode == "additive":
+            elif blend_mode == "add":
                 result = np.minimum(bg + alpha * fg, 1.0)
-            elif blend_mode == "subtractive":
+            elif blend_mode == "subtract":
                 result = np.maximum(bg - alpha * fg, 0.0)
             elif blend_mode == "multiply":
                 result = bg * ((1 - alpha) + alpha * fg)
@@ -109,8 +109,14 @@ class ImageUtils:
         if dst_start_y < background_height and dst_start_x < background_width and dst_end_y > 0 and dst_end_x > 0:
             # Blend rgba_large onto background using alpha compositing
 
-            # Extract alpha channel and normalize to 0-1 range
-            alpha = foreground[src_start_y:src_end_y, src_start_x:src_end_x, 3:4] / 255.0
+            # Check if the foreground has an alpha channel
+            if foreground.shape[2] == 4:
+                # Extract alpha channel and normalize to 0-1 range
+                alpha = foreground[src_start_y:src_end_y, src_start_x:src_end_x, 3:4] / 255.0
+            else:
+                # If no alpha channel, assume fully opaque
+                alpha = np.ones((src_end_y - src_start_y, src_end_x - src_start_x, 1), dtype=np.float32)
+
             # Check if the background has an alpha channel
             if background.shape[2] == 4:
                 # Separate the RGB and alpha channels
