@@ -80,8 +80,8 @@ class FX:
         # update sprite positions
         if self.requires_sprites:
             pose_anchors = {}
-            if self.requires_pose:
-                pose_anchors = self.api.get_pose(frame_info)
+            # if self.requires_pose:
+            #     pose_anchors = self.api.get_pose(frame_info)
             detections = self.api.get_masks(frame_info.index)
             self.sprite_manager.update(frame_info, detections, pose_anchors)
 

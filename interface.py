@@ -22,9 +22,9 @@ class ObjectInfo:
 
 class FXAPI:
     
-    def __init__(self):
+    def __init__(self, main_window):
         super().__init__()
-
+        self.main_window = main_window
         self.should_refresh_frame = False
         self.should_refresh_timeline = False
         self.should_refresh_inspector = False
